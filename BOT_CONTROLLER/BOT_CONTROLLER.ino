@@ -1,7 +1,8 @@
 // Controller BLE connection script
-// Connects to car to send velocity commands and other important information
+// Connects to car to send velocity commands and E-stop
 
 #include <ArduinoBLE.h>
+#include <Arduino_APDS9960.h>
 
 void setup() {
   Serial.begin(9600);
@@ -13,8 +14,12 @@ void setup() {
 
     while (1);
   }
+  // Initialize the gesture recognition
+  if (!APDS.begin()) {
+    Serial.println("Error initializing APDS-9960 sensor.");
+  }
 
-  Serial.println("Bluetooth® Low Energy Central - LED control");
+  Serial.println("Bluetooth® Low Energy Central - velocity control");
 
   // start scanning for peripherals
   BLE.scanForUuid("19b10000-e8f2-537e-4f6c-d104768a1214");
@@ -35,21 +40,21 @@ void loop() {
     Serial.print(peripheral.advertisedServiceUuid());
     Serial.println();
 
-    if (peripheral.localName() != "LED") {
+    if (peripheral.localName() != "CAR") {
       return;
     }
 
     // stop scanning
     BLE.stopScan();
 
-    controlLed(peripheral);
+    controlCar(peripheral);
 
     // peripheral disconnected, start scanning again
     BLE.scanForUuid("19b10000-e8f2-537e-4f6c-d104768a1214");
   }
 }
 
-void controlLed(BLEDevice peripheral) {
+void controlCar(BLEDevice peripheral) {
   // connect to the peripheral
   Serial.println("Connecting ...");
 
@@ -70,15 +75,15 @@ void controlLed(BLEDevice peripheral) {
     return;
   }
 
-  // retrieve the LED characteristic
-  BLECharacteristic ledCharacteristic = peripheral.characteristic("19b10001-e8f2-537e-4f6c-d104768a1214");
+  // retrieve the velocity characteristic
+  BLECharacteristic velocityCharacteristic = peripheral.characteristic("19b10001-e8f2-537e-4f6c-d104768a1214");
 
-  if (!ledCharacteristic) {
-    Serial.println("Peripheral does not have LED characteristic!");
+  if (!velocityCharacteristic) {
+    Serial.println("Peripheral does not have velocity characteristic!");
     peripheral.disconnect();
     return;
-  } else if (!ledCharacteristic.canWrite()) {
-    Serial.println("Peripheral does not have a writable LED characteristic!");
+  } else if (!velocityCharacteristic.canWrite()) {
+    Serial.println("Peripheral does not have a writable velocity characteristic!");
     peripheral.disconnect();
     return;
   }
@@ -94,15 +99,17 @@ void controlLed(BLEDevice peripheral) {
       oldButtonState = buttonState;
 
       if (buttonState) {
-        Serial.println("button pressed");
+        Serial.println("ESTOP pressed");
 
-        // button is pressed, write 0x01 to turn the LED on
-        ledCharacteristic.writeValue((byte)0x01);
-      } else {
-        Serial.println("button released");
+        // button is pressed, write 0x01 to turn the motors off
+        buttonCharacteristic.writeValue((byte)0x01);
+      } 
+      // change to else if and detect gesture - then reset button state? can that be done?
+      else {
+        Serial.println("ESTOP released");
 
-        // button is released, write 0x00 to turn the LED off
-        ledCharacteristic.writeValue((byte)0x00);
+        // button is released, write 0x00 to turn the motors back on
+        buttonCharacteristic.writeValue((byte)0x00);
       }
     }
   }
