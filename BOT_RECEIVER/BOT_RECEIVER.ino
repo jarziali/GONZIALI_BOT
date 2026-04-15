@@ -10,6 +10,9 @@
 #define ENB A1
 
 #define LED_PIN LED_BUILTIN
+
+#define RECEIVER 7
+#define EMITTER 8
       
 enum CarState{
   RUNNING,
@@ -53,6 +56,9 @@ void setup() {
   pinMode(IN3, OUTPUT); // Input 3A
   pinMode(IN4, OUTPUT); // Input 4A
   pinMode(ENB, OUTPUT); // Enable pin 3/4
+
+  pinMode(RECEIVER, INPUT); // IR Receiver
+  pinMode(EMITTER, OUTPUT); // IR Emitter
   
   stopMotors(); // Default motors to off state
 
@@ -178,6 +184,19 @@ void runMotors(int leftSpeed, int rightSpeed){
     digitalWrite(IN3, LOW);
     digitalWrite(IN4, HIGH);
     analogWrite(ENB, abs(rightSpeed));
+  }
+
+}
+
+// Battery Monitor
+
+// IR Pairs
+void lineFollowing(){
+  if (digitalRead(RECEIVER) >= 4){ // If its facing a black object (ie, voltage is slightly under input voltage)
+    runMotors(100), 100; // Move forward
+  }
+  else if (digitalRead(RECEIVER) < 4 && digitalRead(RECEIVER) >= 0){ // White space...
+    
   }
 
 }
